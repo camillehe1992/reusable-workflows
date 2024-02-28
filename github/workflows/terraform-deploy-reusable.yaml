@@ -1,5 +1,6 @@
 name: Terraform Deploy Reusable Workflow
 
+# the workflow is called in a caller workflow
 on:
   workflow_call:
     inputs:
@@ -22,7 +23,8 @@ on:
       tf-version:
         description: Terraform version
         type: string
-        required: true
+        required: false
+        default: 1.4.2
 
 env:
   # Variables & Secrets from GitHub Environment
