@@ -6,11 +6,7 @@ on:
     inputs:
       environment:
         description: Environment to run against
-        type: choice
-        options:
-          - dev
-          - prod
-        default: dev
+        type: string
         required: true
       nickname:
         description: Nickname of the project. Must be lowercase chars
