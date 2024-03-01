@@ -1,8 +1,12 @@
-name: Terraform Apply Reusable Workflow
+name: Terraform Plan Reusable Workflow
 
 # the workflow is called in a caller workflow
 on:
   workflow_call:
+    outputs:
+      tfplanExitCode:
+        description: The terraform plan exit code
+        value: ${{ jobs.plan.outputs.tfplanExitCode }}
     inputs:
       environment:
         description: Environment to run against
@@ -38,12 +42,20 @@ env:
   NICKNAME: ${{ inputs.nickname }}
   TF_VERSION: ${{ inputs.tf-version }}
   WORKING_DIRECTORY: ${{ inputs.working-directory }}
+  # Variables for terraform scripts are prefixed with TF_VAR
+  TF_VAR_aws_region: ${{ vars.AWS_REGION }}
 
 jobs:
-  apply:
-    name: Terraform Apply
+  plan:
+    name: Terraform Plan
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    env:
+      #this is needed since we are running terraform with read-only permissions
+      ARM_SKIP_PROVIDER_REGISTRATION: true
+    outputs:
+      tfplanExitCode: ${{ steps.tf-plan.outputs.exitcode }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,6 +66,13 @@ jobs:
           terraform_wrapper: false
           terraform_version: ${{ env.TF_VERSION }}
 
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
       # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
       - name: Terraform Init
         working-directory: ${{ env.WORKING_DIRECTORY }}
@@ -63,49 +82,65 @@ jobs:
           -backend-config="region=$AWS_REGION" \
           -backend-config="key=$NICKNAME/$ENVIRONMENT/$AWS_REGION/terraform.tfstate"
 
-      - name: Download Terraform Plan
-        uses: actions/download-artifact@v4
+      # Checks that all Terraform configuration files adhere to a canonical format
+      # Will fail the build if not
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      # Generates an execution plan for Terraform
+      # An exit code of 0 indicated no changes, 1 a terraform failure, 2 there are pending changes.
+      - name: Terraform Plan
+        id: tf-plan
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          export exitcode=0
+          terraform plan -var-file $(pwd)/tf_$ENVIRONMENT.tfvars \
+          -detailed-exitcode -no-color -out tfplan || export exitcode=$?
+
+          echo "exitcode=$exitcode" >> $GITHUB_OUTPUT
+
+          if [ $exitcode -eq 1 ]; then
+            echo Terraform Plan Failed!
+            exit 1
+          else
+            exit 0
+          fi
+
+      # Upload plan to artifacts
+      - name: Publish Terraform Plan
+        uses: actions/upload-artifact@v4
         with:
           name: tfplan
-          path: ${{ env.WORKING_DIRECTORY }}
+          path: ${{ env.WORKING_DIRECTORY }}/tfplan
 
-      - name: Download All Artifacts
+      # Upload packages to artifacts
+      - name: Publish Packages
         if: ${{ inputs.packages-directory }}
-        uses: actions/download-artifact@v4
+        uses: actions/upload-artifact@v4
         with:
           path: ${{ inputs.packages-directory }}
 
-      - name: Re-Structure of Downloaded Artifacts
-        if: ${{ inputs.packages-directory }}
-        working-directory: ${{ inputs.packages-directory }}
-        run: |
-          ls -R
-          find . -type f -name '*tfplan*' -delete
-          for X in **/*; do [[ -e $X ]] && mv "$X" .; done
-          find . -empty -type d -delete
-          echo "Files in ${{ inputs.packages-directory }} folder"
-          ls -R
-
-      # Terraform Apply
-      - name: Terraform Apply
-        id: tf-apply-string
+      # Create string output of Terraform Plan
+      - name: Create String Output
+        id: tf-plan-string
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
-          TERRAFORM_OUTPUT=$(terraform apply -auto-approve tfplan)
+          TERRAFORM_PLAN=$(terraform show -no-color tfplan)
 
           delimiter="$(openssl rand -hex 8)"
           echo "summary<<${delimiter}" >> $GITHUB_OUTPUT
-          echo "### Terraform Output" >> $GITHUB_OUTPUT
+          echo "### Terraform Plan Output" >> $GITHUB_OUTPUT
           echo "<details><summary>Click to expand</summary>" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo '```terraform' >> $GITHUB_OUTPUT
-          echo "$TERRAFORM_OUTPUT" >> $GITHUB_OUTPUT
+          echo "$TERRAFORM_PLAN" >> $GITHUB_OUTPUT
           echo '```' >> $GITHUB_OUTPUT
           echo "</details>" >> $GITHUB_OUTPUT
           echo "${delimiter}" >> $GITHUB_OUTPUT
 
-      - name: Publish Terraform Output to Task Summary
+      # Publish Terraform Plan as task summary
+      - name: Publish Terraform Plan to Task Summary
         env:
-          SUMMARY: ${{ steps.tf-apply-string.outputs.summary }}
+          SUMMARY: ${{ steps.tf-plan-string.outputs.summary }}
         run: |
           echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
