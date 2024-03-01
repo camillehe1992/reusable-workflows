@@ -40,7 +40,7 @@ env:
 
 jobs:
   plan-destroy:
-    uses: ./.github/workflows/terraform-plan-reusable.yaml
+    uses: ./.github/workflows/terraform-plan-destroy-reusable.yaml
     secrets: inherit
     with:
       environment: ${{ inputs.environment }}
