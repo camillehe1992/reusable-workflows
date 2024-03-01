@@ -1,0 +1,75 @@
+name: Terraform Apply Reusable Workflow
+
+# the workflow is called in a caller workflow
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: Environment to run against
+        type: string
+        required: true
+      nickname:
+        description: Nickname of the project. Must be lowercase chars
+        type: string
+        required: true
+      working-directory:
+        description: Terraform working directory
+        type: string
+        required: true
+      tf-version:
+        description: Terraform version
+        type: string
+        required: false
+        default: 1.4.2
+
+env:
+  # Variables & Secrets from GitHub Environment
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_ACCOUNT: ${{ vars.AWS_ACCOUNT }}
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  STATE_BUCKET: ${{ vars.STATE_BUCKET }}
+  # Inputs parameters
+  ENVIRONMENT: ${{ inputs.environment }}
+  NICKNAME: ${{ inputs.nickname }}
+  WORKING_DIRECTORY: ${{ inputs.working-directory }}
+  TF_VERSION: ${{ inputs.tf-version }}
+
+jobs:
+  apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    needs: [terraform-plan]
+    steps:
+      # Checkout the repository to the GitHub Actions runner
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+          terraform_version: ${{ env.TF_VERSION }}
+
+      # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+      - name: Terraform Init
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          terraform init -reconfigure \
+          -backend-config="bucket=$STATE_BUCKET" \
+          -backend-config="region=$AWS_REGION" \
+          -backend-config="key=$NICKNAME/$ENVIRONMENT/$AWS_REGION/terraform.tfstate"
+
+      # Download saved plan from artifacts
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ env.WORKING_DIRECTORY }}
+
+      # Terraform Apply
+      - name: Terraform Apply
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: terraform apply -auto-approve tfplan
