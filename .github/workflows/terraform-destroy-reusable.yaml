@@ -48,7 +48,7 @@ jobs:
       packages-directory: lambda-layers/build
 
   apply:
-    needs: [terraform-plan]
+    needs: [plan-destroy]
     if: ${{ needs.plan-destroy.outputs.tfplanExitCode == 2 }}
     uses: ./.github/workflows/terraform-apply-reusable.yaml
     with:
