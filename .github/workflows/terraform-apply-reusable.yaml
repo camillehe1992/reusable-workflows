@@ -36,7 +36,6 @@ env:
   # Inputs parameters
   ENVIRONMENT: ${{ inputs.environment }}
   NICKNAME: ${{ inputs.nickname }}
-  PACKAGES_DIRECTORY: ${{ inputs.packages-directory }}
   TF_VERSION: ${{ inputs.tf-version }}
   WORKING_DIRECTORY: ${{ inputs.working-directory }}
 
@@ -66,19 +65,26 @@ jobs:
           -backend-config="region=$AWS_REGION" \
           -backend-config="key=$NICKNAME/$ENVIRONMENT/$AWS_REGION/terraform.tfstate"
 
-      - name: Download All Artifacts
+      - name: Download Terraform Plan
         uses: actions/download-artifact@v4
         with:
-          path: ${{ env.PACKAGES_DIRECTORY }}
+          name: tfplan
+          path: ${{ env.WORKING_DIRECTORY }}
+
+      - name: Download All Artifacts
+        if: ${{ inputs.packages-directory }}
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ inputs.packages-directory }}
 
       - name: Re-Structure of Downloaded Artifacts
-        working-directory: ${{ env.PACKAGES_DIRECTORY }}
+        working-directory: ${{ inputs.packages-directory }}
         run: |
           ls -R
           find . -type f -name '*tfplan*' -delete
           for X in **/*; do [[ -e $X ]] && mv "$X" .; done
           find . -empty -type d -delete
-          echo "Files in ${{ env.PACKAGES_DIRECTORY }} folder"
+          echo "Files in ${{ inputs.packages-directory }} folder"
           ls -R
 
       # Terraform Apply
