@@ -41,18 +41,20 @@ env:
 jobs:
   plan-destroy:
     uses: ./.github/workflows/terraform-plan-reusable.yaml
+    secrets: inherit
     with:
       environment: ${{ inputs.environment }}
-      nickname: lambda-layers
-      working-directory: lambda-layers
-      packages-directory: lambda-layers/build
+      nickname: ${{ inputs.nickname }}
+      packages-directory: ${{ inputs.packages-directory }}
+      working-directory: ${{ inputs.working-directory }}
 
   apply:
     needs: [plan-destroy]
     if: ${{ needs.plan-destroy.outputs.tfplanExitCode == 2 }}
     uses: ./.github/workflows/terraform-apply-reusable.yaml
+    secrets: inherit
     with:
       environment: ${{ inputs.environment }}
-      nickname: lambda-layers
-      working-directory: lambda-layers
-      packages-directory: lambda-layers/build
+      nickname: ${{ inputs.nickname }}
+      packages-directory: ${{ inputs.packages-directory }}
+      working-directory: ${{ inputs.working-directory }}
