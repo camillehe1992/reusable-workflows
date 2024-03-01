@@ -167,6 +167,7 @@ jobs:
 
       # Terraform Apply
       - name: Terraform Apply
+        id: tf-apply-string
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
           TERRAFORM_OUTPUT=$(terraform apply -auto-approve tfplan)
@@ -181,3 +182,9 @@ jobs:
           echo '```' >> $GITHUB_OUTPUT
           echo "</details>" >> $GITHUB_OUTPUT
           echo "${delimiter}" >> $GITHUB_OUTPUT
+
+      - name: Publish Terraform Output to Task Summary
+        env:
+          SUMMARY: ${{ steps.tf-apply-string.outputs.summary }}
+        run: |
+          echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY

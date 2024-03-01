@@ -70,5 +70,24 @@ jobs:
 
       # Terraform Apply
       - name: Terraform Apply
+        id: tf-apply-string
         working-directory: ${{ env.WORKING_DIRECTORY }}
-        run: terraform apply -auto-approve tfplan
+        run: |
+          TERRAFORM_OUTPUT=$(terraform apply -auto-approve tfplan)
+
+          delimiter="$(openssl rand -hex 8)"
+          echo "summary<<${delimiter}" >> $GITHUB_OUTPUT
+          echo "### Terraform Output" >> $GITHUB_OUTPUT
+          echo "<details><summary>Click to expand</summary>" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo '```terraform' >> $GITHUB_OUTPUT
+          echo "$TERRAFORM_OUTPUT" >> $GITHUB_OUTPUT
+          echo '```' >> $GITHUB_OUTPUT
+          echo "</details>" >> $GITHUB_OUTPUT
+          echo "${delimiter}" >> $GITHUB_OUTPUT
+
+      - name: Publish Terraform Output to Task Summary
+        env:
+          SUMMARY: ${{ steps.tf-apply-string.outputs.summary }}
+        run: |
+          echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
