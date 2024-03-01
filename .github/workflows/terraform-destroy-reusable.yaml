@@ -11,15 +11,19 @@ on:
         description: Nickname of the project. Must be lowercase chars
         type: string
         required: true
-      working-directory:
-        description: Terraform working directory
+      packages-directory:
+        description: Where terraform script to build the packages (zip files)
         type: string
-        required: true
+        required: false
       tf-version:
         description: Terraform version
         type: string
         required: false
         default: 1.4.2
+      working-directory:
+        description: Terraform working directory
+        type: string
+        required: true
 
 env:
   # Variables & Secrets from GitHub Environment
@@ -31,8 +35,9 @@ env:
   # Inputs parameters
   ENVIRONMENT: ${{ inputs.environment }}
   NICKNAME: ${{ inputs.nickname }}
-  WORKING_DIRECTORY: ${{ inputs.working-directory }}
+  PACKAGES_DIRECTORY: ${{ inputs.packages-directory }}
   TF_VERSION: ${{ inputs.tf-version }}
+  WORKING_DIRECTORY: ${{ inputs.working-directory }}
 
 jobs:
   terraform-plan:
@@ -98,12 +103,18 @@ jobs:
             exit 0
           fi
 
-      # Save plan to artifacts
+      # Upload plan to artifacts
       - name: Publish Terraform Plan
         uses: actions/upload-artifact@v4
         with:
           name: tfplan
           path: ${{ env.WORKING_DIRECTORY }}/tfplan
+
+      # Upload packages to artifacts
+      - name: Publish Packages
+        uses: actions/upload-artifact@v4
+        with:
+          path: ${{ env.PACKAGES_DIRECTORY }}
 
       # Create string output of Terraform Plan
       - name: Create String Output
@@ -157,12 +168,20 @@ jobs:
           -backend-config="region=$AWS_REGION" \
           -backend-config="key=$NICKNAME/$ENVIRONMENT/$AWS_REGION/terraform.tfstate"
 
-      # Download saved plan from artifacts
-      - name: Download Terraform Plan
+      - name: Download All Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: tfplan
-          path: ${{ env.WORKING_DIRECTORY }}
+          path: ${{ env.PACKAGES_DIRECTORY }}
+
+      - name: Re-Structure of Downloaded Artifacts
+        working-directory: ${{ env.PACKAGES_DIRECTORY }}
+        run: |
+          ls -R
+          find . -type f -name '*tfplan*' -delete
+          for X in **/*; do [[ -e $X ]] && mv "$X" .; done
+          find . -empty -type d -delete
+          echo "Files in ${{ env.PACKAGES_DIRECTORY }} folder"
+          ls -R
 
       # Terraform Apply
       - name: Terraform Apply
