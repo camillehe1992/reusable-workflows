@@ -4,10 +4,15 @@ name: Terraform Plan Reusable Workflow
 on:
   workflow_call:
     outputs:
-      tfplanExitCode:
+      exitcode:
         description: The terraform plan exit code
-        value: ${{ jobs.plan.outputs.tfplanExitCode }}
+        value: ${{ jobs.plan.outputs.exitcode }}
     inputs:
+      destroy:
+        description: Whether to destroy resources
+        required: false
+        default: false
+        type: boolean
       environment:
         description: Environment to run against
         type: string
@@ -38,6 +43,7 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION }}
   STATE_BUCKET: ${{ vars.STATE_BUCKET }}
   # Inputs parameters
+  DESTROY: ${{ inputs.destroy }}
   ENVIRONMENT: ${{ inputs.environment }}
   NICKNAME: ${{ inputs.nickname }}
   TF_VERSION: ${{ inputs.tf-version }}
@@ -54,7 +60,7 @@ jobs:
       #this is needed since we are running terraform with read-only permissions
       ARM_SKIP_PROVIDER_REGISTRATION: true
     outputs:
-      tfplanExitCode: ${{ steps.tf-plan.outputs.exitcode }}
+      exitcode: ${{ steps.tf-plan.outputs.exitcode }}
 
     steps:
       - name: Checkout
@@ -94,8 +100,16 @@ jobs:
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
           export exitcode=0
-          terraform plan -var-file $(pwd)/tf_$ENVIRONMENT.tfvars \
-          -detailed-exitcode -no-color -out tfplan || export exitcode=$?
+
+          if [ "$DESTROY" = "true" ]; then
+            echo "This is a destroy plan"
+
+            terraform plan -destroy -var-file $(pwd)/tf_$ENVIRONMENT.tfvars \
+            -detailed-exitcode -no-color -out tfplan || export exitcode=$?
+          else
+            terraform plan -var-file $(pwd)/tf_$ENVIRONMENT.tfvars \
+            -detailed-exitcode -no-color -out tfplan || export exitcode=$?
+          fi
 
           echo "exitcode=$exitcode" >> $GITHUB_OUTPUT
 

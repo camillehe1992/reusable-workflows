@@ -91,7 +91,7 @@ jobs:
         id: tf-apply-string
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
-          TERRAFORM_OUTPUT=$(terraform apply -auto-approve tfplan)
+          TERRAFORM_OUTPUT=$(terraform apply -auto-approve tfplan -no-color)
 
           delimiter="$(openssl rand -hex 8)"
           echo "summary<<${delimiter}" >> $GITHUB_OUTPUT
