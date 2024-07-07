@@ -37,9 +37,13 @@ on:
 
 env:
   # Variables & Secrets from GitHub Environment
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  AWS_ACCOUNT: ${{ vars.AWS_ACCOUNT }}
+  # AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  # AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  # AWS_ACCOUNT: ${{ vars.AWS_ACCOUNT }}
+
+  ROLE_TO_ASSUME: ${{ vars.ROLE_TO_ASSUME }}
+  ROLE_SESSION_NAME: ${{ vars.ROLE_SESSION_NAME }}
+
   AWS_REGION: ${{ vars.AWS_REGION }}
   STATE_BUCKET: ${{ vars.STATE_BUCKET }}
   # Inputs parameters
@@ -50,6 +54,9 @@ env:
   WORKING_DIRECTORY: ${{ inputs.working-directory }}
   # Variables for terraform scripts are prefixed with TF_VAR
   TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+
+permissions:
+  id-token: write # This is required for requesting the JWT
 
 jobs:
   plan:
@@ -66,17 +73,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_wrapper: false
-          terraform_version: ${{ env.TF_VERSION }}
+      # - name: Setup Terraform
+      #   uses: hashicorp/setup-terraform@v3
+      #   with:
+      #     terraform_wrapper: false
+      #     terraform_version: ${{ env.TF_VERSION }}
 
-      - name: Configure AWS Credentials
+      - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          role-session-name: ${{ env.ROLE_SESSION_NAME }}
           aws-region: ${{ env.AWS_REGION }}
 
       # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
