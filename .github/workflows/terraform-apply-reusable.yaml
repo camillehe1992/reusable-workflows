@@ -57,6 +57,8 @@ jobs:
       - name: Terraform Init
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
+          terraform version
+
           terraform init -reconfigure \
           -backend-config="bucket=$STATE_BUCKET" \
           -backend-config="region=$AWS_REGION" \
