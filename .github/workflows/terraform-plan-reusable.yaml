@@ -110,6 +110,8 @@ jobs:
             -detailed-exitcode -no-color -out tfplan || export exitcode=$?
           fi
 
+          echo exitcode = $exitcode
+
           echo "exitcode=$exitcode" >> $GITHUB_OUTPUT
 
           if [ $exitcode -eq 1 ]; then
