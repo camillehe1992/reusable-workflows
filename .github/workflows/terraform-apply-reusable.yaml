@@ -46,7 +46,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: configure aws credentials
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.ROLE_TO_ASSUME }}
@@ -57,6 +57,8 @@ jobs:
       - name: Terraform Init
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
+          terraform version
+
           terraform init -reconfigure \
           -backend-config="bucket=$STATE_BUCKET" \
           -backend-config="region=$AWS_REGION" \
