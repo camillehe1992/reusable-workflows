@@ -67,7 +67,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: configure aws credentials
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.ROLE_TO_ASSUME }}
