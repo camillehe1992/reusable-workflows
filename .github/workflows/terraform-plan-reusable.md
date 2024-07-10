@@ -12,7 +12,7 @@ The reusable workflow is used to apply terraform scripts to AWS environment.
 - `environment`: `Required` Environment to run against.
 - `nickname`: `Required` Nickname of the project. Must be lowercase chars.
 - `packages-directory`: `Optional` Where terraform script to build the packages (zip files).
-- `tf-version`: `Optional` Terraform version. Default value `1.4.2`.
+- `tf-version`: `Optional` Terraform version. Default value `1.8.0`.
 - `working-directory`: `Required` Terraform working directory.
 
 ### Outputs
