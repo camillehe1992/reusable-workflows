@@ -29,10 +29,9 @@ on:
         required: false
 
 permissions:
-  write-all
-  # actions: read
-  # contents: write
-  # security-events: write
+  actions: read
+  contents: write
+  security-events: write
 
 jobs:
   analyze:
