@@ -36,7 +36,7 @@ permissions:
 jobs:
   analyze:
     name: Analyze
-    runs-on: atc-ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
